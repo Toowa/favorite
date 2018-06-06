@@ -23,6 +23,8 @@ class User extends Authenticatable
      *
      * @var array
      */
+     
+     
     protected $hidden = [
         'password', 'remember_token',
     ];
@@ -30,6 +32,7 @@ class User extends Authenticatable
     {
         return $this->hasMany(Micropost::class);
     }
+    
     public function followings()
     {
         return $this->belongsToMany(User::class, 'user_follow', 'user_id', 'follow_id')->withTimestamps();
@@ -56,7 +59,7 @@ class User extends Authenticatable
             return true;
         }
     }
-    
+
     public function unfollow($userId)
     {
         // confirming if already following
@@ -74,16 +77,59 @@ class User extends Authenticatable
             return false;
         }
     }
-    
-    
+
     public function is_following($userId) {
         return $this->followings()->where('follow_id', $userId)->exists();
     }
     
     public function feed_microposts()
+        {
+            $follow_user_ids = $this->followings()-> pluck('users.id')->toArray();
+            $follow_user_ids[] = $this->id;
+            return Micropost::whereIn('user_id', $follow_user_ids);
+        }
+        
+    public function favorite($micropostId)
     {
-        $follow_user_ids = $this->followings()-> pluck('users.id')->toArray();
-        $follow_user_ids[] = $this->id;
-        return Micropost::whereIn('user_id', $follow_user_ids);
+        // confirm if already following
+        $exist = $this->is_favorite($micropostId);
+        // confirming that it is not you
+        //$its_me = $this->id == $micropostId;
+    
+        if ($exist) {
+            // do nothing if already following
+            return false;
+        } else {
+            // favorite() might be followings()
+            $this->favorites()->attach($micropostId);
+            return true;
+        }
     }
-}
+
+    public function unfavorite($micropostId)
+    {
+        // confirming if already following
+        $exist = $this->is_favorite($micropostId);
+        // confirming that it is not you
+        $its_me = $this->id == $micropostId;
+    
+    
+        if ($exist && !$its_me) {
+            // stop following if following
+            $this->favorites()->detach($micropostId);
+            return true;
+        } else {
+            // do nothing if not following
+            return false;
+        }
+    }
+    
+    public function is_favorite($micropostId) {
+        return $this->favorites()->where('favorite_id', $micropostId)->exists();
+    }
+        
+    public function favorites()
+    {
+        return $this->belongsToMany(Micropost::class, 'favorites', 'user_id', 'favorite_id')->withTimestamps();
+    }
+    }
