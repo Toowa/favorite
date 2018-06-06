@@ -49,7 +49,6 @@ class User extends Authenticatable
         $exist = $this->is_following($userId);
         // confirming that it is not you
         $its_me = $this->id == $userId;
-    
         if ($exist || $its_me) {
             // do nothing if already following
             return false;
